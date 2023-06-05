@@ -15,8 +15,9 @@ stuff = []
 # https://www.tutorialspoint.com/python/python_command_line_arguments.htm
 def main(argv):
    
-
-    Es = [1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50]
+    Es = []
+    #Es.extend([1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50])
+    Es.extend([10*x for x in range(6, 11)])
     base='run_el_EX.mac'
     for E in Es:
         cfg = base.replace('EX','E{}GeV'.format(E))

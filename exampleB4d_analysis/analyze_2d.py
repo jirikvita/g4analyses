@@ -1,6 +1,7 @@
 #!/snap/bin/pyroot
 # was: #!/usr/bin/python3
 # Ne 5. března 2023, 22:16:34 CET
+# updated 5.6.2023
 
 #from __future__ import print_function
 
@@ -41,10 +42,15 @@ def main(argv):
     Es.extend([1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50])
     Es.extend([10*x for x in range(6, 11)])
 
+    # HACK!
+    #Es = [5, 40, 80]
+    
     treename = 'B4'
     hs = {}
+    h2s = {}
     rfs = []
     nbs = 300
+    nbs2 = 50
     e1 = 0.
     e2 = 5.5
 
@@ -60,9 +66,25 @@ def main(argv):
         tree = rfile.Get(treename)
         hname = 'h_Egap_{}'.format(E)
         h = ROOT.TH1D(hname, hname + ';E_{dep} [GeV]', nbs, e1, e2)
+        hname = 'h_Egap_vs_Eabs_{}'.format(E)
+        sf = 20.
+        sf2 = 10.
+        f = 0.25
+        f2 = 0.5
+        h2 = ROOT.TH2D(hname, hname + ';E_{abs} [GeV];E_{dep} [GeV]', nbs2, (1-2*f)*E, (1+f/2)*E, nbs2, (1-f2)*E/sf, (1+f2)*E/sf)
         print(tree)
-        tree.Draw('Egap / 1000. >> {}'.format(hname))
+        nentries = tree.GetEntries()
+        print(f'Looping over {nentries} events in the tree')
+        for ientry in range(0,nentries):
+            nb = tree.GetEntry(ientry)
+            val = tree.Egap / 1000.
+            #print(val)
+            h.Fill(val)
+            h2.Fill(tree.Eabs / 1000., tree.Egap / 1000.)
+            print(tree.Eabs / 1000., tree.Egap / 1000.)
         hs[E] = h
+        h2s[E] = h2
+    
     opt = 'hist plc pfc'
     bopt = 'hist plc pfc'
     print('Drawing...')
@@ -75,6 +97,14 @@ def main(argv):
     cans.append(ecan)
     ROOT.gPad.SetGridx(1)
     ROOT.gPad.SetGridy(1)
+
+
+    canname = 'Edep_vs_Eabs'
+    can2d = ROOT.TCanvas(canname, canname, 100, 100, 1000, 800)
+    nn = int(sqrt(len(Es))) + 1
+    can2d.Divide(nn,nn)
+    cans.append(can2d)
+
 
     
     for E in hs:
@@ -99,6 +129,10 @@ def main(argv):
         gr_Edep.SetPointError(ip, 0, h.GetMeanError())
         
         ip = ip+1
+
+        h2 = h2s[E]
+        can2d.cd(ip)
+        h2.Draw('colz')
 
     ROOT.gPad.RedrawAxis()
     ROOT.gPad.Update()
