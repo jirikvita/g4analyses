@@ -13,12 +13,13 @@
 /vis/scene/endOfEventAction accumulate
 /vis/viewer/set/autoRefresh true
 
-# 20 keV electrons at 30 deg to the surface normal (set in PrimaryGenerator)
-/gun/particle e-
-/gun/energy 20 keV
-/gun/direction 0.5 0 0.8660254
+# Uniform square source parallel to the sensor, centred on its normal
+/source/energy 20 keV
+/source/angle 30 deg
+/source/size 10 mm
+/source/distance 30 mm
 
-/run/beamOn 20
+/run/beamOn 100
 
 # Interactive: VIS_DRIVER=OGL ./timepix run.mac -i
 # or just ./timepix run.mac -i

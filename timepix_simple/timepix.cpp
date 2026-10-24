@@ -26,6 +26,8 @@
 #include <G4AnalysisManager.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4PhysicalConstants.hh>
+#include <Randomize.hh>
+#include <G4GenericMessenger.hh>
 
 #include <map>
 #include <utility>
@@ -81,7 +83,7 @@ public:
 
     const G4double size = kNPix * kPitch;  // 14.08 mm
 
-    auto* worldS = new G4Box("World", size, size, 5. * mm);
+    auto* worldS = new G4Box("World", 100. * mm, 100. * mm, 100. * mm);
     auto* worldLV = new G4LogicalVolume(worldS, vacuum, "World");
     auto* worldPV = new G4PVPlacement(nullptr, {}, worldLV, "World", nullptr, false, 0, true);
     worldLV->SetVisAttributes(G4VisAttributes::GetInvisible());
@@ -125,18 +127,40 @@ class PrimaryGenerator : public G4VUserPrimaryGeneratorAction {
 public:
   PrimaryGenerator() : fGun(new G4ParticleGun(1)) {
     fGun->SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("e-"));
-    fGun->SetParticleEnergy(20. * keV);
-    // 30 deg to the surface normal (z), tilted in the x-z plane
-    const G4double theta = 30. * deg;
-    fGun->SetParticleMomentumDirection({std::sin(theta), 0., std::cos(theta)});
-    fGun->SetParticlePosition({0., 0., -kThick / 2 - 1. * um});
+    fMessenger = new G4GenericMessenger(this, "/source/", "Square parallel electron source");
+    fMessenger->DeclarePropertyWithUnit("energy", "keV", fEnergy, "Kinetic energy");
+    fMessenger->DeclarePropertyWithUnit("angle", "deg", fAngle,
+                                        "Angle between beam and surface normal (tilt in x-z)");
+    fMessenger->DeclarePropertyWithUnit("size", "mm", fSize, "Square source edge");
+    fMessenger->DeclarePropertyWithUnit("distance", "mm", fDistance,
+                                        "Source plane distance above the sensor surface");
   }
-  ~PrimaryGenerator() override { delete fGun; }
+  ~PrimaryGenerator() override {
+    delete fMessenger;
+    delete fGun;
+  }
 
-  void GeneratePrimaries(G4Event* event) override { fGun->GeneratePrimaryVertex(event); }
+  // Uniform square source perpendicular to the beam; its axis passes through the sensor-surface centre.
+  void GeneratePrimaries(G4Event* event) override {
+    const G4double a = (G4UniformRand() - 0.5) * fSize;
+    const G4double b = (G4UniformRand() - 0.5) * fSize;
+    const G4ThreeVector dir(std::sin(fAngle), 0., std::cos(fAngle));
+    const G4ThreeVector u(std::cos(fAngle), 0., -std::sin(fAngle));
+    const G4ThreeVector v(0., 1., 0.);
+    const G4ThreeVector centre = G4ThreeVector(0., 0., -kThick / 2) - fDistance * dir;
+    fGun->SetParticleEnergy(fEnergy);
+    fGun->SetParticleMomentumDirection(dir);
+    fGun->SetParticlePosition(centre + a * u + b * v);
+    fGun->GeneratePrimaryVertex(event);
+  }
 
 private:
   G4ParticleGun* fGun;
+  G4GenericMessenger* fMessenger = nullptr;
+  G4double fEnergy = 20. * keV;
+  G4double fAngle = 30. * deg;
+  G4double fSize = 40. * mm;
+  G4double fDistance = 1. * mm;
 };
 
 // ---------------------------------------------------------------- run action

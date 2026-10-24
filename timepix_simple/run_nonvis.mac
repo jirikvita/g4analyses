@@ -1,0 +1,12 @@
+/run/initialize
+
+/tracking/storeTrajectory 0
+
+# Uniform square source perpendicular to the beam, axis through the sensor centre
+/source/energy 20 keV
+/source/angle 30 deg
+/source/size 10 mm
+/source/distance 30 mm
+
+/run/printProgress 1000
+/run/beamOn 100000
