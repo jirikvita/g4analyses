@@ -1,0 +1,14 @@
+# Aliases {energy} (keV) and {nevents} are passed by the runner: ./timepix run_novis_scan.mac energy=20 nevents=20000
+/run/initialize
+
+/tracking/storeTrajectory 0
+
+/analysis/setFileName timepix_{energy}keV.root
+
+/source/energy {energy} keV
+/source/angle 30 deg
+/source/size 10 mm
+/source/distance 30 mm
+
+/run/printProgress 5000
+/run/beamOn {nevents}
