@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Matplotlib version of analyze.py: per-event charge, pixel hit map, hits per event."""
+import os
 import sys
 
 import awkward as ak
@@ -34,4 +35,7 @@ ax[1, 1].hist(pq, bins=200, range=(0, 8000), color="magenta")
 ax[1, 1].set(title="Charge per hit pixel", xlabel="charge [e]", ylabel="pixels", yscale="log")
 
 fig.tight_layout()
+out = os.path.splitext(os.path.basename(fname))[0] + "_analysis_mpl"
+for ext in ("png", "pdf"):
+    fig.savefig(f"{out}.{ext}")
 plt.show()

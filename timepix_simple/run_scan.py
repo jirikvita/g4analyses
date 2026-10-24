@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 ENERGIES = [10, 15, 20, 30, 40, 50, 70, 100]
-NEVENTS = 20000
+NEVENTS = 200000
 G4_ENV = "/home/qitek/install/geant4-v11.1.1-install/bin/geant4.sh"
 
 here = os.path.dirname(os.path.abspath(__file__))

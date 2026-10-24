@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Analyse timepix.root: per-event charge, pixel hit map, hits per event."""
+import os
 import sys
 
 import ROOT
@@ -46,4 +47,7 @@ h_pix.SetFillColor(ROOT.kMagenta)
 h_pix.Draw()
 
 c.Update()
+out = os.path.splitext(os.path.basename(fname))[0] + "_analysis"
+for ext in ("png", "pdf"):
+    c.SaveAs(f"{out}.{ext}")
 input("Press Enter to close the canvas...")

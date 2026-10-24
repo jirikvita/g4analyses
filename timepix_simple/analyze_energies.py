@@ -63,4 +63,6 @@ for pad, key in enumerate(("charge", "nhits", "pix"), start=1):
     legends.append(leg)
 
 c.Update()
+for ext in ("png", "pdf"):
+    c.SaveAs(f"energy_scan.{ext}")
 input("Press Enter to close the canvas...")

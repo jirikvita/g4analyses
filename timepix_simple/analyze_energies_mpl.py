@@ -46,4 +46,6 @@ for axis, t, xl, yl in zip(ax, titles, xlabels, ylabels):
     axis.legend()
 
 fig.tight_layout()
+for ext in ("png", "pdf"):
+    fig.savefig(f"energy_scan_mpl.{ext}")
 plt.show()

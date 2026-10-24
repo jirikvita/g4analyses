@@ -179,8 +179,8 @@ public:
     am->SetVerboseLevel(1);
     am->SetNtupleMerging(true);
     am->SetDefaultFileType("root");
-    // Default name; /analysis/setFileName in a macro overrides it (set only on master, before the macro runs).
-    if (G4Threading::IsMasterThread()) am->SetFileName("timepix");
+    // Default name; /analysis/setFileName in a macro overrides it.
+    am->SetFileName("timepix.root");
     am->CreateNtuple("pixels", "Pixels with signal, one row per event");
     am->CreateNtupleIColumn("i", gPixI);
     am->CreateNtupleIColumn("j", gPixJ);
