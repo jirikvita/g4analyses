@@ -7,6 +7,7 @@
 #include <G4VUserActionInitialization.hh>
 #include <G4VUserPrimaryGeneratorAction.hh>
 #include <G4UserRunAction.hh>
+#include <G4UserEventAction.hh>
 #include <G4VSensitiveDetector.hh>
 #include <G4SDManager.hh>
 #include <FTFP_BERT.hh>
@@ -26,25 +27,29 @@
 #include <G4AnalysisManager.hh>
 #include <G4SystemOfUnits.hh>
 #include <G4PhysicalConstants.hh>
+#include <G4Threading.hh>
 #include <Randomize.hh>
 #include <G4GenericMessenger.hh>
 
 #include <map>
 #include <utility>
+#include <vector>
 
 namespace {
 constexpr G4int kNPix = 256;
 constexpr G4double kPitch = 55. * um;
 constexpr G4double kThick = 400. * um;
 constexpr G4double kPairEnergy = 3.6 * eV;  // e-h pair creation energy in Si
+// Per-thread event buffers: filled by the SD, written by EventAction.
+thread_local std::map<std::pair<G4int, G4int>, G4double> gEdep;
+thread_local std::vector<G4int> gPixI, gPixJ;
+thread_local std::vector<G4double> gPixCharge;
 }
 
 // ---------------------------------------------------------------- sensitive detector
 class PixelSD : public G4VSensitiveDetector {
 public:
   explicit PixelSD(const G4String& name) : G4VSensitiveDetector(name) {}
-
-  void Initialize(G4HCofThisEvent*) override { fEdep.clear(); }
 
   G4bool ProcessHits(G4Step* step, G4TouchableHistory*) override {
     const G4double edep = step->GetTotalEnergyDeposit();
@@ -53,24 +58,27 @@ public:
     // depth 0: pixel replica along y, depth 1: strip replica along x
     const G4int j = touch->GetCopyNumber(0);
     const G4int i = touch->GetCopyNumber(1);
-    fEdep[{i, j}] += edep;
+    gEdep[{i, j}] += edep;
     return true;
   }
+};
 
-  void EndOfEvent(G4HCofThisEvent*) override {
-    if (fEdep.empty()) return;
-    auto* am = G4AnalysisManager::Instance();
-    for (const auto& [ij, edep] : fEdep) {
-      am->FillNtupleIColumn(0, ij.first);
-      am->FillNtupleIColumn(1, ij.second);
-      am->FillNtupleDColumn(2, edep / kPairEnergy);  // charge in units of e
-      am->FillNtupleDColumn(3, edep / keV);
-      am->AddNtupleRow(0);
+// ---------------------------------------------------------------- event action
+class EventAction : public G4UserEventAction {
+public:
+  void BeginOfEventAction(const G4Event*) override { gEdep.clear(); }
+
+  void EndOfEventAction(const G4Event*) override {
+    gPixI.clear();
+    gPixJ.clear();
+    gPixCharge.clear();
+    for (const auto& [ij, edep] : gEdep) {
+      gPixI.push_back(ij.first);
+      gPixJ.push_back(ij.second);
+      gPixCharge.push_back(edep / kPairEnergy);  // charge in units of e
     }
+    G4AnalysisManager::Instance()->AddNtupleRow(0);
   }
-
-private:
-  std::map<std::pair<G4int, G4int>, G4double> fEdep;
 };
 
 // ---------------------------------------------------------------- geometry
@@ -170,16 +178,18 @@ public:
     auto* am = G4AnalysisManager::Instance();
     am->SetVerboseLevel(1);
     am->SetNtupleMerging(true);
-    am->CreateNtuple("pixels", "Pixels with signal");
-    am->CreateNtupleIColumn("i");       // 0
-    am->CreateNtupleIColumn("j");       // 1
-    am->CreateNtupleDColumn("charge");  // 2, electrons
-    am->CreateNtupleDColumn("edep");    // 3, keV
+    am->SetDefaultFileType("root");
+    // Default name; /analysis/setFileName in a macro overrides it (set only on master, before the macro runs).
+    if (G4Threading::IsMasterThread()) am->SetFileName("timepix");
+    am->CreateNtuple("pixels", "Pixels with signal, one row per event");
+    am->CreateNtupleIColumn("i", gPixI);
+    am->CreateNtupleIColumn("j", gPixJ);
+    am->CreateNtupleDColumn("charge", gPixCharge);  // electrons
     am->FinishNtuple();
   }
 
   void BeginOfRunAction(const G4Run*) override {
-    G4AnalysisManager::Instance()->OpenFile("timepix.root");
+    G4AnalysisManager::Instance()->OpenFile();
   }
 
   void EndOfRunAction(const G4Run*) override {
@@ -195,16 +205,21 @@ public:
   void Build() const override {
     SetUserAction(new PrimaryGenerator);
     SetUserAction(new RunAction);
+    SetUserAction(new EventAction);
   }
 };
 
 // ---------------------------------------------------------------- main
 int main(int argc, char** argv) {
   G4String macro = "run.mac";
+  std::vector<std::pair<G4String, G4String>> aliases;  // key=value args become macro aliases
   G4bool interactive = (argc == 1);
   for (int k = 1; k < argc; ++k) {
-    if (G4String(argv[k]) == "-i") interactive = true;
-    else macro = argv[k];
+    const G4String arg = argv[k];
+    const auto eq = arg.find('=');
+    if (arg == "-i") interactive = true;
+    else if (eq != G4String::npos) aliases.emplace_back(arg.substr(0, eq), arg.substr(eq + 1));
+    else macro = arg;
   }
   G4UIExecutive* ui = interactive ? new G4UIExecutive(1, argv) : nullptr;
 
@@ -219,6 +234,8 @@ int main(int argc, char** argv) {
   vis->Initialize();
 
   auto* uiManager = G4UImanager::GetUIpointer();
+  for (const auto& [key, value] : aliases)
+    uiManager->ApplyCommand("/control/alias " + key + " " + value);
   uiManager->ApplyCommand("/control/execute " + macro);
   if (ui) {
     ui->SessionStart();
