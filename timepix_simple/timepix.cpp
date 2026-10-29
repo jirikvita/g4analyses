@@ -30,6 +30,7 @@
 #include <G4Threading.hh>
 #include <Randomize.hh>
 #include <G4GenericMessenger.hh>
+#include <G4Exception.hh>
 
 #include <map>
 #include <utility>
@@ -135,7 +136,9 @@ class PrimaryGenerator : public G4VUserPrimaryGeneratorAction {
 public:
   PrimaryGenerator() : fGun(new G4ParticleGun(1)) {
     fGun->SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("e-"));
-    fMessenger = new G4GenericMessenger(this, "/source/", "Square parallel electron source");
+    fMessenger = new G4GenericMessenger(this, "/source/", "Square parallel particle source");
+    fMessenger->DeclareMethod("particle", &PrimaryGenerator::SetParticle,
+                              "Primary particle type");
     fMessenger->DeclarePropertyWithUnit("energy", "keV", fEnergy, "Kinetic energy");
     fMessenger->DeclarePropertyWithUnit("angle", "deg", fAngle,
                                         "Angle between beam and surface normal (tilt in x-z)");
@@ -146,6 +149,17 @@ public:
   ~PrimaryGenerator() override {
     delete fMessenger;
     delete fGun;
+  }
+
+  void SetParticle(G4String particleName) {
+    auto* particle = G4ParticleTable::GetParticleTable()->FindParticle(particleName);
+    if (particle == nullptr) {
+      G4ExceptionDescription description;
+      description << "Unknown particle type: " << particleName;
+      G4Exception("PrimaryGenerator::SetParticle", "Timepix001", FatalException, description);
+      return;
+    }
+    fGun->SetParticleDefinition(particle);
   }
 
   // Uniform square source perpendicular to the beam; its axis passes through the sensor-surface centre.

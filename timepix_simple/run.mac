@@ -14,6 +14,7 @@
 /vis/viewer/set/autoRefresh true
 
 # Uniform square source parallel to the sensor, centred on its normal
+/source/particle e-
 /source/energy 20 keV
 /source/angle 30 deg
 /source/size 10 mm
@@ -23,5 +24,4 @@
 
 # Interactive: VIS_DRIVER=OGL ./timepix run.mac -i
 # or just ./timepix run.mac -i
-
 

@@ -1,0 +1,27 @@
+/run/initialize
+
+/vis/open OGL 800x800-0+0
+/vis/viewer/set/autoRefresh false
+/vis/drawVolume
+/vis/viewer/set/viewpointVector 1 0.6 0.5
+/vis/viewer/set/style surface
+/vis/viewer/zoom 1.5
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/default/setDrawStepPts true
+/vis/modeling/trajectories/drawByCharge-0/default/setStepPtsSize 2
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+
+# Uniform square source parallel to the sensor, centred on its normal
+/source/particle pi+
+/source/energy 5 GeV
+/source/angle 85 deg
+/source/size 10 mm
+/source/distance 30 mm
+
+/run/beamOn 100
+
+# Interactive: VIS_DRIVER=OGL ./timepix run.mac -i
+# or just ./timepix run.mac -i
+
